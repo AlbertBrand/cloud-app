@@ -17,16 +17,16 @@ firebase.initializeApp(config);
 export default class App extends React.Component {
   state = {
     messages: {},
-    image: null,
+    labels: null,
   };
   user = null;
 
   constructor() {
     super();
 
-    firebase.database().ref('messages').limitToLast(2).on('value', (snapshot) => {
-      const messages = snapshot.val();
-      this.setState({ messages });
+    firebase.database().ref('photo/labels').on('value', (snapshot) => {
+      const labels = snapshot.val();
+      this.setState({ labels });
     });
 
     firebase.auth().onAuthStateChanged((user) => {
@@ -53,13 +53,10 @@ export default class App extends React.Component {
           onPress={this.pickImage}
         />
 
-        {this.state.messages && Object.keys(this.state.messages).map((key) => {
-          const message = this.state.messages[key];
+        {this.state.labels && Object.keys(this.state.labels).map((key) => {
+          const label = this.state.labels[key];
           return (
-            <View key={key}>
-              <Text>{message.name}</Text>
-              <Text>{message.text}</Text>
-            </View>
+            <Text key={key}>{label}</Text>
           );
         })}
       </View>
@@ -68,29 +65,24 @@ export default class App extends React.Component {
 
   pickImage = async () => {
     const result = await ImagePicker.launchCameraAsync({
-      base64: true
     });
     if (result.cancelled) {
       return;
     }
-    const byteArray = this.convertToByteArray(result.base64);
-    const ref = `users/${this.user.uid}/uploads/upload.jpg`;
-    console.log('ref', ref);
-    const storageRef = firebase.storage().ref(ref);
 
-    // put doesn't seem to work
-    const uploadTask = storageRef.put(byteArray, { contentType: 'image/jpg' });
-    uploadTask.on('state_changed', (snapshot) => {
-      var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      console.log('Upload is ' + progress + '% done');
-    }, (error) => {
-      console.log("in _uploadAsByteArray ", error)
-    }, () => {
-      var downloadURL = uploadTask.snapshot.downloadURL;
-      console.log("_uploadAsByteArray ", uploadTask.snapshot.downloadURL)
-    });
-
+    await firebase.database().ref('photo/labels').set(null);
     this.setState({ image: result.uri });
+
+    const body = new FormData();
+    body.append('image', {
+      uri: result.uri,
+      name: 'upload.jpg',
+      type: 'image/jpg'
+    });
+    fetch('https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage', {
+      method: 'POST',
+      body
+    });
   };
 
   convertToByteArray = (input) => {
