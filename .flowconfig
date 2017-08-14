@@ -30,6 +30,9 @@
 ; Ignore react-native-fbads dependency of the expo sdk
 .*/node_modules/react-native-fbads/*
 
+; Ignore functions folder
+.*/functions/.*
+
 [include]
 
 [libs]

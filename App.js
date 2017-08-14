@@ -1,3 +1,4 @@
+/* @flow */
 import React from 'react';
 import {
   ActivityIndicator,
@@ -23,15 +24,25 @@ const config = {
 firebase.initializeApp(config);
 
 // workaround for firebase long timers causing a warning
-console.ignoredYellowBox = ['Setting a timer'];
+(console:Object).ignoredYellowBox = ['Setting a timer'];
 
+type State = {
+  imageUri?: string,
+  imageData?: {
+    state: string,
+    labels: {
+      [key: string]: string,
+    },
+  },
+  userId?: string,
+}
+type Ref = {
+  on: (event: string, (snapshot: Object) => void) => void,
+  off: () => void,
+}
 export default class App extends React.Component {
-  state = {
-    imageUri: null,
-    imageData: null,
-    userId: null,
-  };
-  imageDataRef = null;
+  state: State = {};
+  imageDataRef: Ref;
 
   constructor() {
     super();
@@ -72,16 +83,17 @@ export default class App extends React.Component {
   }
 
   renderImageData() {
-    if (!this.state.imageData) {
+    const { imageData } = this.state;
+    if (!imageData) {
       return;
     }
-    if (this.state.imageData.state !== 'done') {
+    if (imageData.state !== 'done') {
       return (
-        <Text>{this.state.imageData.state}</Text>
+        <Text>{imageData.state}</Text>
       );
     }
-    return Object.keys(this.state.imageData.labels).map((key) => {
-      const label = this.state.labels[key];
+    return Object.keys(imageData.labels).map((key) => {
+      const label = imageData.labels[key];
       return (
         <Text key={key}>{label}</Text>
       );
@@ -89,6 +101,11 @@ export default class App extends React.Component {
   }
 
   pickImage = async () => {
+    const { userId } = this.state;
+    if (!userId) {
+      return;
+    }
+
     const result = await ImagePicker.launchCameraAsync();
     if (result.cancelled) {
       return;
@@ -98,13 +115,12 @@ export default class App extends React.Component {
     this.setState({ imageUri: result.uri });
 
     // generate an image id via firebase and set status
-    const { userId } = this.state;
     const imageRef = await firebase.database().ref(`user/${userId}/image/`).push({ state: 'uploading' });
     const imageId = imageRef.key;
 
     // upload image via post request
     const body = new FormData();
-    body.append('image', {
+    (body:Object).append('image', {
       uri: result.uri,
       name: 'image.jpg',
       type: 'image/jpg',
@@ -117,9 +133,9 @@ export default class App extends React.Component {
     });
 
     // listen to new image data
-    if (this.imageDataRef !== null) {
+    if (this.imageDataRef !== undefined) {
       this.imageDataRef.off();
-      this.setState({ imageData: null });
+      this.setState({ imageData: undefined });
     }
     this.imageDataRef = firebase.database().ref(`user/${userId}/image/${imageId}`);
     this.imageDataRef.on('value', (snapshot) => {
