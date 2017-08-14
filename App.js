@@ -1,10 +1,18 @@
 import React from 'react';
-import { Button, Image, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Button,
+  Image,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
 import base64 from 'base-64';
 
-var config = {
+const uploadFunctionUri = 'https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage';
+const config = {
   apiKey: "AIzaSyDjXyFPFhBvHWvRBoGm2umbhUGfjEDkZ-E",
   authDomain: "albert-brand-speeltuin.firebaseapp.com",
   databaseURL: "https://albert-brand-speeltuin.firebaseio.com",
@@ -14,93 +22,116 @@ var config = {
 };
 firebase.initializeApp(config);
 
+// workaround for firebase long timers causing a warning
+console.ignoredYellowBox = ['Setting a timer'];
+
 export default class App extends React.Component {
   state = {
-    messages: {},
-    labels: null,
+    imageUri: null,
+    imageData: null,
+    userId: null,
   };
-  user = null;
+  imageDataRef = null;
 
   constructor() {
     super();
 
-    firebase.database().ref('photo/labels').on('value', (snapshot) => {
-      const labels = snapshot.val();
-      this.setState({ labels });
+    const auth = firebase.auth();
+    auth.onAuthStateChanged((user) => {
+      this.setState({ userId: user.uid });
+      console.log("onAuthStateChanged", user.uid);
     });
 
-    firebase.auth().onAuthStateChanged((user) => {
-      console.log("onAuthStateChanged", user);
-      this.user = user;
-    });
-
-    firebase.auth().signInAnonymously().catch(function(error) {
-      // Handle Errors here.
-      var errorCode = error.code;
-      var errorMessage = error.message;
-      // ...
+    auth.signInAnonymously().catch(function(error) {
+      console.error(error);
     });
   }
 
   render() {
-    const { image } = this.state;
+    const { userId, imageUri } = this.state;
+    if (!userId) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large"/>
+        </View>
+      )
+    }
     return (
-      <View style={styles.container}>
-        {image &&
-         <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />}
+      <View style={styles.center}>
+        {imageUri &&
+         <Image source={{ uri: imageUri }} style={{ width: 200, height: 200 }} />}
+
+        {this.renderImageData()}
+
         <Button
           title="Image picker"
           onPress={this.pickImage}
         />
-
-        {this.state.labels && Object.keys(this.state.labels).map((key) => {
-          const label = this.state.labels[key];
-          return (
-            <Text key={key}>{label}</Text>
-          );
-        })}
       </View>
     );
   }
 
-  pickImage = async () => {
-    const result = await ImagePicker.launchCameraAsync({
+  renderImageData() {
+    if (!this.state.imageData) {
+      return;
+    }
+    if (this.state.imageData.state !== 'done') {
+      return (
+        <Text>{this.state.imageData.state}</Text>
+      );
+    }
+    return Object.keys(this.state.imageData.labels).map((key) => {
+      const label = this.state.labels[key];
+      return (
+        <Text key={key}>{label}</Text>
+      );
     });
+  }
+
+  pickImage = async () => {
+    const result = await ImagePicker.launchCameraAsync();
     if (result.cancelled) {
       return;
     }
 
-    await firebase.database().ref('photo/labels').set(null);
-    this.setState({ image: result.uri });
+    // show image
+    this.setState({ imageUri: result.uri });
 
+    // generate an image id via firebase and set status
+    const { userId } = this.state;
+    const imageRef = await firebase.database().ref(`user/${userId}/image/`).push({ state: 'uploading' });
+    const imageId = imageRef.key;
+
+    // upload image via post request
     const body = new FormData();
     body.append('image', {
       uri: result.uri,
-      name: 'upload.jpg',
-      type: 'image/jpg'
+      name: 'image.jpg',
+      type: 'image/jpg',
     });
-    fetch('https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage', {
+    body.append('userId', userId);
+    body.append('imageId', imageId);
+    fetch(uploadFunctionUri, {
       method: 'POST',
       body
     });
-  };
 
-  convertToByteArray = (input) => {
-    var binary_string = base64.decode(input);
-    var len = binary_string.length;
-    var bytes = new Uint8Array(len);
-    for (var i = 0; i < len; i++) {
-      bytes[i] = binary_string.charCodeAt(i);
+    // listen to new image data
+    if (this.imageDataRef !== null) {
+      this.imageDataRef.off();
+      this.setState({ imageData: null });
     }
-    return bytes;
-  };
+    this.imageDataRef = firebase.database().ref(`user/${userId}/image/${imageId}`);
+    this.imageDataRef.on('value', (snapshot) => {
+      const imageData = snapshot.val();
+      this.setState({ imageData });
+    });
+  }
 }
 
-
 const styles = StyleSheet.create({
-  container: {
+  center: {
     flex: 1,
-    backgroundColor: '#ddd',
     alignItems: 'center',
     justifyContent: 'center',
   },

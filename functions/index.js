@@ -6,14 +6,6 @@ const Multer = require('multer');
 
 admin.initializeApp(functions.config().firebase);
 
-exports.addMessage = functions.https.onRequest((req, res) => {
-  const text = req.query.text;
-  admin.database().ref('/cloud-messages').push({text: text}).then(snapshot => {
-    // Redirect with 303 SEE OTHER to the URL of the pushed object in the Firebase console.
-    res.redirect(303, snapshot.ref);
-  });
-});
-
 exports.detectLabels = functions.storage.object().onChange(event => {
   const object = event.data;
 
@@ -23,49 +15,66 @@ exports.detectLabels = functions.storage.object().onChange(event => {
     return console.log('This is a deploy event.');
   }
 
+  const { userId, imageId } = object.metadata;
+  admin.database().ref(`user/${userId}/image/${imageId}/state`).set('processing');
+
   const bucket = gcs.bucket(object.bucket);
   const file = bucket.file(object.name);
 
   return vision.detectLabels(file).then(data => {
     const labels = data[0];
-    return admin.database().ref('/photo').update({ labels });
+    return admin.database().ref(`user/${userId}/image/${imageId}`).set({
+      state: 'done',
+      labels
+    });
   });
 });
 
 exports.uploadImage = functions.https.onRequest((req, res) => {
   if (req.method !== 'POST') {
-    res.status(403).send('Forbidden!');
+    res.status(403).send('Forbidden!').end();
+    returnl
   }
 
-  console.log('POST event');
+  // call middleware to handle multipart requests
   multer.single('image')(req, res, () => {
-    // console.log('multer req', req);
-    sendUploadToGCS(req, res, () => {
-      // console.log('upload req', req);
-      res.end();
-    })
-  });
+    const { userId, imageId } = req.body;
+    // check if user and image path exists in db (as a rudimentary auth check)
+    admin.database().ref(`user/${userId}/image/${imageId}/state`).once('value', (snapshot) => {
+      if(!snapshot.val()) {
+        console.error(`could not find path user/${userId}/image/${imageId}/state`);
+        res.status(403).send('Forbidden!').end();
+        return;
+      }
+
+      // upload to firebase storage
+      sendUploadToGCS(req, res, () => {
+        res.end();
+      })
+    });
+  })
 });
 
 
 // Express middleware that will automatically pass uploads to Cloud Storage.
-// req.file is processed and will have two new properties:
-// * ``cloudStorageObject`` the object name in cloud storage.
-// * ``cloudStoragePublicUrl`` the public url to the object.
-// [START process]
 function sendUploadToGCS(req, res, next) {
   if (!req.file) {
     console.log('no file found');
     return next();
   }
 
+  const { userId, imageId } = req.body;
   const bucket = gcs.bucket('albert-brand-speeltuin.appspot.com');
-  const gcsname = Date.now() + req.file.originalname;
+  const gcsname = `user/${userId}/image/${imageId}/${req.file.originalname}`;
   const file = bucket.file(gcsname);
 
   const stream = file.createWriteStream({
     metadata: {
-      contentType: req.file.mimetype
+      contentType: req.file.mimetype,
+      metadata: {
+        userId,
+        imageId,
+      }
     }
   });
 
@@ -76,24 +85,16 @@ function sendUploadToGCS(req, res, next) {
 
   stream.on('finish', () => {
     req.file.cloudStorageObject = gcsname;
-    file.makePublic().then(() => {
-      // req.file.cloudStoragePublicUrl = getPublicUrl(gcsname);
-      next();
-    });
+    next();
   });
 
   stream.end(req.file.buffer);
 }
-// [END process]
 
 // Multer handles parsing multipart/form-data requests.
-// This instance is configured to store images in memory.
-// This makes it straightforward to upload to Cloud Storage.
-// [START multer]
 const multer = Multer({
   storage: Multer.MemoryStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // no larger than 5mb
   }
 });
-// [END multer]
