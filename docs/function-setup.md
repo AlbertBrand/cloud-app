@@ -16,11 +16,9 @@ firebase use albert-brand-speeltuin
 ```
 
 Deploy:
-(make sure to run in root of project)
 ```
-firebase deploy --only functions:detectLabels
+firebase deploy --only functions
 ```
-
 
 Some examples from Google:
 https://github.com/firebase/functions-samples
