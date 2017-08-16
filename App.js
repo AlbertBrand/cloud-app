@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Button,
   Image,
+  Platform,
   StyleSheet,
   Text,
   View
@@ -21,7 +22,6 @@ const config = {
   storageBucket: "albert-brand-speeltuin.appspot.com",
   messagingSenderId: "1017341325599"
 };
-firebase.initializeApp(config);
 
 // workaround for firebase long timers causing a warning
 (console:Object).ignoredYellowBox = ['Setting a timer'];
@@ -46,6 +46,7 @@ export default class App extends React.Component {
 
   constructor() {
     super();
+    firebase.initializeApp(config);
 
     const auth = firebase.auth();
     auth.onAuthStateChanged((user) => {
@@ -59,26 +60,43 @@ export default class App extends React.Component {
   }
 
   render() {
-    const { userId, imageUri } = this.state;
+    const { userId } = this.state;
     if (!userId) {
       return (
-        <View style={styles.center}>
+        <View style={[styles.root, styles.center]}>
           <ActivityIndicator size="large"/>
         </View>
       )
     }
     return (
-      <View style={styles.center}>
-        {imageUri &&
-         <Image source={{ uri: imageUri }} style={{ width: 200, height: 200 }} />}
+      <View style={styles.root}>
+        <View style={[styles.imageHolder, styles.center]}>
+          {this.renderImage()}
+        </View>
 
-        {this.renderImageData()}
+        <View style={[styles.labelHolder, styles.center]}>
+          {this.renderImageData()}
+        </View>
 
-        <Button
-          title="Image picker"
-          onPress={this.pickImage}
-        />
+        <View style={styles.buttonHolder}>
+          <Button
+            style={styles.button}
+            title="Take photo"
+            onPress={this.pickImage} />
+        </View>
       </View>
+    );
+  }
+
+  renderImage() {
+    const { imageUri } = this.state;
+    if (!imageUri) {
+      return (
+        <Text style={styles.stateText}>Take a photo...</Text>
+      )
+    }
+    return (
+      <Image source={{ uri: imageUri }} style={styles.image} />
     );
   }
 
@@ -88,14 +106,17 @@ export default class App extends React.Component {
       return;
     }
     if (imageData.state !== 'done') {
-      return (
-        <Text>{imageData.state}</Text>
-      );
+      return [
+        <ActivityIndicator key={1}/>,
+        <Text key={2} style={styles.stateText}>{imageData.state}...</Text>
+      ];
     }
     return Object.keys(imageData.labels).map((key) => {
       const label = imageData.labels[key];
       return (
-        <Text key={key}>{label}</Text>
+        <View key={key} style={[styles.label, styles.center]}>
+          <Text style={styles.labelText}>{label}</Text>
+        </View>
       );
     });
   }
@@ -146,9 +167,41 @@ export default class App extends React.Component {
 }
 
 const styles = StyleSheet.create({
-  center: {
+  root: {
     flex: 1,
+    marginTop: Platform.select({ ios: 0, android: 24 })
+  },
+  imageHolder: {
+    flex: 2,
+    backgroundColor: '#eeeeee',
+    padding: 10,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  labelHolder: {
+    flex: 1,
+    padding: 10,
+  },
+  label: {
+    flex: 1,
+  },
+  stateText: {
+    fontSize: 16,
+  },
+  labelText: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  buttonHolder: {
+    padding: 10,
+  },
+  button: {
+  },
+  center: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
+  }
 });
