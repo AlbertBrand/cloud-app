@@ -3,6 +3,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   Button,
+  Dimensions,
   Image,
   Platform,
   StyleSheet,
@@ -27,6 +28,7 @@ const config = {
 (console:Object).ignoredYellowBox = ['Setting a timer'];
 
 type State = {
+  mode: 'portrait' | 'landscape',
   imageUri?: string,
   imageData?: {
     state: string,
@@ -40,9 +42,31 @@ type Ref = {
   on: (event: string, (snapshot: Object) => void) => void,
   off: () => void,
 }
+type Dimension = {
+  width: number,
+  height: number,
+};
 export default class App extends React.Component {
-  state: State = {};
+  state: State = {
+    mode: this.provideMode(Dimensions.get("window")),
+  };
   imageDataRef: Ref;
+  dimensionListener = (dimensions: { window: Dimension }) => {
+    this.setState({ mode: this.provideMode(dimensions.window) })
+  };
+
+  provideMode(window: Dimension) {
+    const { width, height } = window;
+    return height > width ? 'portrait' : 'landscape';
+  }
+
+  componentWillMount() {
+    Dimensions.addEventListener("change", this.dimensionListener);
+  }
+
+  componentWillUnmount() {
+    Dimensions.removeEventListener("change", this.dimensionListener);
+  }
 
   constructor() {
     super();
@@ -63,26 +87,27 @@ export default class App extends React.Component {
     const { userId } = this.state;
     if (!userId) {
       return (
-        <View style={[styles.root, styles.center]}>
+        <View style={[this.styles.root, this.styles.center]}>
           <ActivityIndicator size="large"/>
         </View>
       )
     }
     return (
-      <View style={styles.root}>
-        <View style={[styles.imageHolder, styles.center]}>
+      <View style={this.styles.root}>
+        <View style={[this.styles.imageHolder, this.styles.center]}>
           {this.renderImage()}
         </View>
 
-        <View style={[styles.labelHolder, styles.center]}>
-          {this.renderImageData()}
-        </View>
+        <View style={this.styles.labelButtonHolder}>
+          <View style={[this.styles.labelHolder, this.styles.center]}>
+            {this.renderImageData()}
+          </View>
 
-        <View style={styles.buttonHolder}>
-          <Button
-            style={styles.button}
-            title="Take photo"
-            onPress={this.pickImage} />
+          <View style={this.styles.buttonHolder}>
+            <Button
+              title="Take photo"
+              onPress={this.pickImage} />
+          </View>
         </View>
       </View>
     );
@@ -92,11 +117,11 @@ export default class App extends React.Component {
     const { imageUri } = this.state;
     if (!imageUri) {
       return (
-        <Text style={styles.stateText}>Take a photo...</Text>
+        <Text style={this.styles.stateText}>Take a photo...</Text>
       )
     }
     return (
-      <Image source={{ uri: imageUri }} style={styles.image} />
+      <Image source={{ uri: imageUri }} style={this.styles.image} />
     );
   }
 
@@ -108,14 +133,14 @@ export default class App extends React.Component {
     if (imageData.state !== 'done') {
       return [
         <ActivityIndicator key={1}/>,
-        <Text key={2} style={styles.stateText}>{imageData.state}...</Text>
+        <Text key={2} style={this.styles.stateText}>{imageData.state}...</Text>
       ];
     }
     return Object.keys(imageData.labels).map((key) => {
       const label = imageData.labels[key];
       return (
-        <View key={key} style={[styles.label, styles.center]}>
-          <Text style={styles.labelText}>{label}</Text>
+        <View key={key} style={[this.styles.label, this.styles.center]}>
+          <Text style={this.styles.labelText}>{label}</Text>
         </View>
       );
     });
@@ -164,15 +189,20 @@ export default class App extends React.Component {
       this.setState({ imageData });
     });
   }
+
+  get styles(): Object {
+    const { mode } = this.state;
+    return responsiveStyles[mode];
+  }
 }
 
-const styles = StyleSheet.create({
+const styles = {
   root: {
     flex: 1,
     marginTop: Platform.select({ ios: 0, android: 24 })
   },
   imageHolder: {
-    flex: 2,
+    flex: 1,
     backgroundColor: '#eeeeee',
     padding: 10,
   },
@@ -180,6 +210,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'contain',
+  },
+  labelButtonHolder: {
+    flex: 1,
   },
   labelHolder: {
     flex: 1,
@@ -198,10 +231,19 @@ const styles = StyleSheet.create({
   buttonHolder: {
     padding: 10,
   },
-  button: {
-  },
   center: {
     alignItems: 'center',
     justifyContent: 'center',
   }
-});
+};
+
+const responsiveStyles = {
+  portrait: StyleSheet.create(styles),
+  landscape: StyleSheet.create({
+    ...styles,
+    root: {
+      ...styles.root,
+      flexDirection: 'row'
+    }
+  })
+}
