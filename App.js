@@ -3,7 +3,6 @@ import React from 'react';
 import {
   ActivityIndicator,
   Button,
-  Dimensions,
   Image,
   Platform,
   StyleSheet,
@@ -13,6 +12,8 @@ import {
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
 import base64 from 'base-64';
+
+import withMode from './withMode';
 
 const uploadFunctionUri = 'https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage';
 const config = {
@@ -27,8 +28,10 @@ const config = {
 // workaround for firebase long timers causing a warning
 (console:Object).ignoredYellowBox = ['Setting a timer'];
 
-type State = {
+type Props = {
   mode: 'portrait' | 'landscape',
+}
+type State = {
   imageUri?: string,
   imageData?: {
     state: string,
@@ -42,31 +45,10 @@ type Ref = {
   on: (event: string, (snapshot: Object) => void) => void,
   off: () => void,
 }
-type Dimension = {
-  width: number,
-  height: number,
-};
-export default class App extends React.Component {
-  state: State = {
-    mode: this.provideMode(Dimensions.get("window")),
-  };
+class App extends React.PureComponent {
+  props: Props;
+  state: State = {};
   imageDataRef: Ref;
-  dimensionListener = (dimensions: { window: Dimension }) => {
-    this.setState({ mode: this.provideMode(dimensions.window) })
-  };
-
-  provideMode(window: Dimension) {
-    const { width, height } = window;
-    return height > width ? 'portrait' : 'landscape';
-  }
-
-  componentWillMount() {
-    Dimensions.addEventListener("change", this.dimensionListener);
-  }
-
-  componentWillUnmount() {
-    Dimensions.removeEventListener("change", this.dimensionListener);
-  }
 
   constructor() {
     super();
@@ -191,10 +173,11 @@ export default class App extends React.Component {
   }
 
   get styles(): Object {
-    const { mode } = this.state;
+    const { mode } = this.props;
     return responsiveStyles[mode];
   }
 }
+export default withMode(App);
 
 const styles = {
   root: {
