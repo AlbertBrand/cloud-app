@@ -11,8 +11,6 @@ import {
 } from 'react-native';
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
-import base64 from 'base-64';
-
 import withMode from './withMode';
 
 const uploadFunctionUri =
