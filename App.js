@@ -45,7 +45,7 @@ type Ref = {
   on: (event: string, (snapshot: Object) => void) => void,
   off: () => void,
 }
-class App extends React.PureComponent {
+class App extends React.Component {
   props: Props;
   state: State = {};
   imageDataRef: Ref;
