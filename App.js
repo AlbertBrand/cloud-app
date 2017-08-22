@@ -40,6 +40,7 @@ type State = {
     },
   },
   userId?: string,
+  label?: string,
 }
 type Ref = {
   on: (event: string, (snapshot: Object) => void) => void,
@@ -54,19 +55,8 @@ class App extends React.Component {
     super();
     firebase.initializeApp(config);
 
-    const auth = firebase.auth();
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        this.setState({ userId: user.uid });
-        console.log("onAuthStateChanged", user.uid);
-      } else {
-        console.log("user is undefined")
-      }
-    });
-
-    auth.signInAnonymously().catch(function(error) {
-      console.error(error);
-    });
+    this.authListener();
+    this.labelListener();
   }
 
   render() {
@@ -81,6 +71,7 @@ class App extends React.Component {
     return (
       <View style={this.styles.root}>
         <View style={[this.styles.imageHolder, this.styles.center]}>
+          <Text style={this.styles.stateText}>Looking for "{this.state.label}"</Text>
           {this.renderImage()}
         </View>
 
@@ -101,12 +92,7 @@ class App extends React.Component {
 
   renderImage() {
     const { imageUri } = this.state;
-    if (!imageUri) {
-      return (
-        <Text style={this.styles.stateText}>Take a photo...</Text>
-      )
-    }
-    return (
+    return imageUri && (
       <Image source={{ uri: imageUri }} style={this.styles.image} />
     );
   }
@@ -124,11 +110,37 @@ class App extends React.Component {
     }
     return Object.keys(imageData.labels).map((key) => {
       const label = imageData.labels[key];
+      const matchesLabelStyle = this.state.label === label ? this.styles.matchesLabel : null;
       return (
         <View key={key} style={[this.styles.label, this.styles.center]}>
-          <Text style={this.styles.labelText}>{label}</Text>
+          <Text style={[this.styles.labelText, matchesLabelStyle]}>{label}</Text>
         </View>
       );
+    });
+  }
+
+  authListener() {
+    const auth = firebase.auth();
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        this.setState({ userId: user.uid });
+        console.log("onAuthStateChanged", user.uid);
+        this.labelListener();
+      } else {
+        console.log("user is undefined")
+      }
+    });
+
+    auth.signInAnonymously().catch(function(error) {
+      console.error(error);
+    });
+  }
+
+  labelListener() {
+    firebase.database().ref('label').on('value', (snapshot) => {
+      console.log('label change');
+      const label = snapshot.val();
+      this.setState({ label });
     });
   }
 
@@ -221,6 +233,10 @@ const styles = {
   center: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  matchesLabel: {
+    color: 'white',
+    backgroundColor: 'green'
   }
 };
 
