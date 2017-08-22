@@ -7,7 +7,7 @@ import {
   Platform,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
@@ -15,22 +15,23 @@ import base64 from 'base-64';
 
 import withMode from './withMode';
 
-const uploadFunctionUri = 'https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage';
+const uploadFunctionUri =
+  'https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage';
 const config = {
-  apiKey: "AIzaSyDjXyFPFhBvHWvRBoGm2umbhUGfjEDkZ-E",
-  authDomain: "albert-brand-speeltuin.firebaseapp.com",
-  databaseURL: "https://albert-brand-speeltuin.firebaseio.com",
-  projectId: "albert-brand-speeltuin",
-  storageBucket: "albert-brand-speeltuin.appspot.com",
-  messagingSenderId: "1017341325599"
+  apiKey: 'AIzaSyDjXyFPFhBvHWvRBoGm2umbhUGfjEDkZ-E',
+  authDomain: 'albert-brand-speeltuin.firebaseapp.com',
+  databaseURL: 'https://albert-brand-speeltuin.firebaseio.com',
+  projectId: 'albert-brand-speeltuin',
+  storageBucket: 'albert-brand-speeltuin.appspot.com',
+  messagingSenderId: '1017341325599',
 };
 
 // workaround for firebase long timers causing a warning
-(console:Object).ignoredYellowBox = ['Setting a timer'];
+(console: Object).ignoredYellowBox = ['Setting a timer'];
 
 type Props = {
   mode: 'portrait' | 'landscape',
-}
+};
 type State = {
   imageUri?: string,
   imageData?: {
@@ -41,11 +42,11 @@ type State = {
   },
   userId?: string,
   label?: string,
-}
+};
 type Ref = {
   on: (event: string, (snapshot: Object) => void) => void,
   off: () => void,
-}
+};
 class App extends React.Component {
   props: Props;
   state: State = {};
@@ -64,14 +65,16 @@ class App extends React.Component {
     if (!userId) {
       return (
         <View style={[this.styles.root, this.styles.center]}>
-          <ActivityIndicator size="large"/>
+          <ActivityIndicator size="large" />
         </View>
-      )
+      );
     }
     return (
       <View style={this.styles.root}>
         <View style={[this.styles.imageHolder, this.styles.center]}>
-          <Text style={this.styles.stateText}>Looking for "{this.state.label}"</Text>
+          <Text style={this.styles.stateText}>
+            Looking for "{this.state.label}"
+          </Text>
           {this.renderImage()}
         </View>
 
@@ -81,9 +84,7 @@ class App extends React.Component {
           </View>
 
           <View style={this.styles.buttonHolder}>
-            <Button
-              title="Take photo"
-              onPress={this.pickImage} />
+            <Button title="Take photo" onPress={this.pickImage} />
           </View>
         </View>
       </View>
@@ -92,8 +93,8 @@ class App extends React.Component {
 
   renderImage() {
     const { imageUri } = this.state;
-    return imageUri && (
-      <Image source={{ uri: imageUri }} style={this.styles.image} />
+    return (
+      imageUri && <Image source={{ uri: imageUri }} style={this.styles.image} />
     );
   }
 
@@ -104,16 +105,21 @@ class App extends React.Component {
     }
     if (imageData.state !== 'done') {
       return [
-        <ActivityIndicator key={1}/>,
-        <Text key={2} style={this.styles.stateText}>{imageData.state}...</Text>
+        <ActivityIndicator key={1} />,
+        <Text key={2} style={this.styles.stateText}>
+          {imageData.state}...
+        </Text>,
       ];
     }
-    return Object.keys(imageData.labels).map((key) => {
+    return Object.keys(imageData.labels).map(key => {
       const label = imageData.labels[key];
-      const matchesLabelStyle = this.state.label === label ? this.styles.matchesLabel : null;
+      const matchesLabelStyle =
+        this.state.label === label ? this.styles.matchesLabel : null;
       return (
         <View key={key} style={[this.styles.label, this.styles.center]}>
-          <Text style={[this.styles.labelText, matchesLabelStyle]}>{label}</Text>
+          <Text style={[this.styles.labelText, matchesLabelStyle]}>
+            {label}
+          </Text>
         </View>
       );
     });
@@ -121,13 +127,13 @@ class App extends React.Component {
 
   authListener() {
     const auth = firebase.auth();
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(user => {
       if (user) {
         this.setState({ userId: user.uid });
-        console.log("onAuthStateChanged", user.uid);
+        console.log('onAuthStateChanged', user.uid);
         this.labelListener();
       } else {
-        console.log("user is undefined")
+        console.log('user is undefined');
       }
     });
 
@@ -137,7 +143,7 @@ class App extends React.Component {
   }
 
   labelListener() {
-    firebase.database().ref('label').on('value', (snapshot) => {
+    firebase.database().ref('label').on('value', snapshot => {
       console.log('label change');
       const label = snapshot.val();
       this.setState({ label });
@@ -159,12 +165,15 @@ class App extends React.Component {
     this.setState({ imageUri: result.uri });
 
     // generate an image id via firebase and set status
-    const imageRef = await firebase.database().ref(`user/${userId}/image/`).push({ state: 'uploading' });
+    const imageRef = await firebase
+      .database()
+      .ref(`user/${userId}/image/`)
+      .push({ state: 'uploading' });
     const imageId = imageRef.key;
 
     // upload image via post request
     const body = new FormData();
-    (body:Object).append('image', {
+    (body: Object).append('image', {
       uri: result.uri,
       name: 'image.jpg',
       type: 'image/jpg',
@@ -173,7 +182,7 @@ class App extends React.Component {
     body.append('imageId', imageId);
     fetch(uploadFunctionUri, {
       method: 'POST',
-      body
+      body,
     });
 
     // listen to new image data
@@ -181,12 +190,14 @@ class App extends React.Component {
       this.imageDataRef.off();
       this.setState({ imageData: undefined });
     }
-    this.imageDataRef = firebase.database().ref(`user/${userId}/image/${imageId}`);
-    this.imageDataRef.on('value', (snapshot) => {
+    this.imageDataRef = firebase
+      .database()
+      .ref(`user/${userId}/image/${imageId}`);
+    this.imageDataRef.on('value', snapshot => {
       const imageData = snapshot.val();
       this.setState({ imageData });
     });
-  }
+  };
 
   get styles(): Object {
     const { mode } = this.props;
@@ -198,7 +209,7 @@ export default withMode(App);
 const styles = {
   root: {
     flex: 1,
-    marginTop: Platform.select({ ios: 0, android: 24 })
+    marginTop: Platform.select({ ios: 0, android: 24 }),
   },
   imageHolder: {
     flex: 1,
@@ -225,7 +236,7 @@ const styles = {
   },
   labelText: {
     fontSize: 16,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   buttonHolder: {
     padding: 10,
@@ -236,8 +247,8 @@ const styles = {
   },
   matchesLabel: {
     color: 'white',
-    backgroundColor: 'green'
-  }
+    backgroundColor: 'green',
+  },
 };
 
 const responsiveStyles = {
@@ -246,7 +257,7 @@ const responsiveStyles = {
     ...styles,
     root: {
       ...styles.root,
-      flexDirection: 'row'
-    }
-  })
-}
+      flexDirection: 'row',
+    },
+  }),
+};

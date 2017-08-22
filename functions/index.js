@@ -16,7 +16,10 @@ exports.detectLabels = functions.storage.object().onChange(event => {
   }
 
   const { userId, imageId } = object.metadata;
-  admin.database().ref(`user/${userId}/image/${imageId}/state`).set('processing');
+  admin
+    .database()
+    .ref(`user/${userId}/image/${imageId}/state`)
+    .set('processing');
 
   const bucket = gcs.bucket(object.bucket);
   const file = bucket.file(object.name);
@@ -25,7 +28,7 @@ exports.detectLabels = functions.storage.object().onChange(event => {
     const labels = data[0];
     return admin.database().ref(`user/${userId}/image/${imageId}`).set({
       state: 'done',
-      labels
+      labels,
     });
   });
 });
@@ -33,28 +36,32 @@ exports.detectLabels = functions.storage.object().onChange(event => {
 exports.uploadImage = functions.https.onRequest((req, res) => {
   if (req.method !== 'POST') {
     res.status(403).send('Forbidden!').end();
-    returnl
+    returnl;
   }
 
   // call middleware to handle multipart requests
   multer.single('image')(req, res, () => {
     const { userId, imageId } = req.body;
     // check if user and image path exists in db (as a rudimentary auth check)
-    admin.database().ref(`user/${userId}/image/${imageId}/state`).once('value', (snapshot) => {
-      if(!snapshot.val()) {
-        console.error(`could not find path user/${userId}/image/${imageId}/state`);
-        res.status(403).send('Forbidden!').end();
-        return;
-      }
+    admin
+      .database()
+      .ref(`user/${userId}/image/${imageId}/state`)
+      .once('value', snapshot => {
+        if (!snapshot.val()) {
+          console.error(
+            `could not find path user/${userId}/image/${imageId}/state`,
+          );
+          res.status(403).send('Forbidden!').end();
+          return;
+        }
 
-      // upload to firebase storage
-      sendUploadToGCS(req, res, () => {
-        res.end();
-      })
-    });
-  })
+        // upload to firebase storage
+        sendUploadToGCS(req, res, () => {
+          res.end();
+        });
+      });
+  });
 });
-
 
 // Express middleware that will automatically pass uploads to Cloud Storage.
 function sendUploadToGCS(req, res, next) {
@@ -74,11 +81,11 @@ function sendUploadToGCS(req, res, next) {
       metadata: {
         userId,
         imageId,
-      }
-    }
+      },
+    },
   });
 
-  stream.on('error', (err) => {
+  stream.on('error', err => {
     req.file.cloudStorageError = err;
     next(err);
   });
@@ -95,6 +102,6 @@ function sendUploadToGCS(req, res, next) {
 const multer = Multer({
   storage: Multer.MemoryStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // no larger than 5mb
-  }
+    fileSize: 5 * 1024 * 1024, // no larger than 5mb
+  },
 });

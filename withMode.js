@@ -1,12 +1,10 @@
 /* @flow */
 import React from 'react';
-import {
-  Dimensions,
-} from 'react-native';
+import { Dimensions } from 'react-native';
 
 type State = {
   mode: 'portrait' | 'landscape',
-}
+};
 type Dimension = {
   width: number,
   height: number,
@@ -14,11 +12,11 @@ type Dimension = {
 export default function withMode(ComposedComponent: ReactClass<*>) {
   return class WithModeComponent extends React.PureComponent {
     state: State = {
-      mode: this.provideMode(Dimensions.get("window")),
+      mode: this.provideMode(Dimensions.get('window')),
     };
 
     dimensionListener = (dimensions: { window: Dimension }) => {
-      this.setState({ mode: this.provideMode(dimensions.window) })
+      this.setState({ mode: this.provideMode(dimensions.window) });
     };
 
     provideMode(window: Dimension) {
@@ -27,17 +25,15 @@ export default function withMode(ComposedComponent: ReactClass<*>) {
     }
 
     componentWillMount() {
-      Dimensions.addEventListener("change", this.dimensionListener);
+      Dimensions.addEventListener('change', this.dimensionListener);
     }
 
     componentWillUnmount() {
-      Dimensions.removeEventListener("change", this.dimensionListener);
+      Dimensions.removeEventListener('change', this.dimensionListener);
     }
 
     render() {
-      return (
-        <ComposedComponent {...this.props} {...this.state}/>
-      )
+      return <ComposedComponent {...this.props} {...this.state} />;
     }
-  }
+  };
 }

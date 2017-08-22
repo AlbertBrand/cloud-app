@@ -1,2 +1,4 @@
 /* @flow */
-export const ImagePicker = { launchCameraAsync: async () => ({ uri: 'testUri' }) };
+export const ImagePicker = {
+  launchCameraAsync: async () => ({ uri: 'testUri' }),
+};
