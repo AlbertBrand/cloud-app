@@ -56,8 +56,12 @@ class App extends React.Component {
 
     const auth = firebase.auth();
     auth.onAuthStateChanged((user) => {
-      this.setState({ userId: user.uid });
-      console.log("onAuthStateChanged", user.uid);
+      if (user) {
+        this.setState({ userId: user.uid });
+        console.log("onAuthStateChanged", user.uid);
+      } else {
+        console.log("user is undefined")
+      }
     });
 
     auth.signInAnonymously().catch(function(error) {
