@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
+    "babel-eslint": "^7.2.3",
+    "eslint-plugin-flowtype": "^2.35.0",
+    "eslint-plugin-prettier": "^2.2.0",
+    "eslint-plugin-react": "^7.3.0",
     "jest-expo": "~19.0.0",
+    "prettier-eslint": "^6.4.2",
     "react-native-scripts": "1.0.0",
     "react-test-renderer": "16.0.0-alpha.12"
   },
