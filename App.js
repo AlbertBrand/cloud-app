@@ -27,11 +27,19 @@ const config = {
 
 type State = {
   imageUri?: string,
+  imageData?: {
+    state: string,
+  },
   userId?: string,
   label?: string,
 };
+type Ref = {
+  on: (event: string, (snapshot: Object) => void) => void,
+  off: () => void,
+};
 class App extends React.Component {
   state: State = {};
+  imageDataRef: Ref;
 
   constructor() {
     super();
@@ -60,6 +68,10 @@ class App extends React.Component {
         </View>
 
         <View style={styles.labelButtonHolder}>
+          <View style={[styles.labelHolder, styles.center]}>
+            {this.renderImageData()}
+          </View>
+
           <View style={styles.buttonHolder}>
             <Button title="Take photo" onPress={this.pickImage} />
           </View>
@@ -73,6 +85,21 @@ class App extends React.Component {
     return (
       imageUri && <Image source={{ uri: imageUri }} style={styles.image} />
     );
+  }
+
+  renderImageData() {
+    const { imageData } = this.state;
+    if (!imageData) {
+      return;
+    }
+    if (imageData.state !== 'done') {
+      return [
+        <ActivityIndicator key={1} />,
+        <Text key={2} style={styles.stateText}>
+          {imageData.state}...
+        </Text>,
+      ];
+    }
   }
 
   authListener() {
@@ -132,6 +159,19 @@ class App extends React.Component {
       method: 'POST',
       body,
     });
+
+    // listen to new image data
+    if (this.imageDataRef !== undefined) {
+      this.imageDataRef.off();
+      this.setState({ imageData: undefined });
+    }
+    this.imageDataRef = firebase
+      .database()
+      .ref(`user/${userId}/image/${imageId}`);
+    this.imageDataRef.on('value', snapshot => {
+      const imageData = snapshot.val();
+      this.setState({ imageData });
+    });
   };
 }
 export default App;
@@ -153,6 +193,10 @@ const styles = {
   },
   labelButtonHolder: {
     flex: 1,
+  },
+  labelHolder: {
+    flex: 1,
+    padding: 10,
   },
   buttonHolder: {
     padding: 10,
