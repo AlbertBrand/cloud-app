@@ -1,6 +1,13 @@
 /* @flow */
 import React from 'react';
-import { Button, Image, Platform, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Button,
+  Image,
+  Platform,
+  Text,
+  View,
+} from 'react-native';
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
 
@@ -18,6 +25,7 @@ const config = {
 
 type State = {
   imageUri?: string,
+  userId?: string,
   label?: string,
 };
 class App extends React.Component {
@@ -27,10 +35,19 @@ class App extends React.Component {
     super();
     firebase.initializeApp(config);
 
+    this.authListener();
     this.labelListener();
   }
 
   render() {
+    const { userId } = this.state;
+    if (!userId) {
+      return (
+        <View style={[styles.root, styles.center]}>
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
     return (
       <View style={styles.root}>
         <View style={[styles.imageHolder, styles.center]}>
@@ -54,6 +71,22 @@ class App extends React.Component {
     return (
       imageUri && <Image source={{ uri: imageUri }} style={styles.image} />
     );
+  }
+
+  authListener() {
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        this.setState({ userId: user.uid });
+        console.log('onAuthStateChanged', user.uid);
+      } else {
+        console.log('user is undefined');
+      }
+    });
+
+    auth.signInAnonymously().catch(function(error) {
+      console.error(error);
+    });
   }
 
   labelListener() {
