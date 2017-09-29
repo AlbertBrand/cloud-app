@@ -1,6 +1,7 @@
 /* @flow */
 import React from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Button, Image, Platform, Text, View } from 'react-native';
+import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
 
 const config = {
@@ -16,6 +17,7 @@ const config = {
 (console: Object).ignoredYellowBox = ['Setting a timer'];
 
 type State = {
+  imageUri?: string,
   label?: string,
 };
 class App extends React.Component {
@@ -31,12 +33,26 @@ class App extends React.Component {
   render() {
     return (
       <View style={styles.root}>
-        <View style={[styles.center]}>
+        <View style={[styles.imageHolder, styles.center]}>
           <Text style={styles.stateText}>
             Looking for "{this.state.label}"
           </Text>
+          {this.renderImage()}
+        </View>
+
+        <View style={styles.labelButtonHolder}>
+          <View style={styles.buttonHolder}>
+            <Button title="Take photo" onPress={this.pickImage} />
+          </View>
         </View>
       </View>
+    );
+  }
+
+  renderImage() {
+    const { imageUri } = this.state;
+    return (
+      imageUri && <Image source={{ uri: imageUri }} style={styles.image} />
     );
   }
 
@@ -46,6 +62,16 @@ class App extends React.Component {
       this.setState({ label });
     });
   }
+
+  pickImage = async () => {
+    const result = await ImagePicker.launchCameraAsync();
+    if (result.cancelled) {
+      return;
+    }
+
+    // show image
+    this.setState({ imageUri: result.uri });
+  };
 }
 export default App;
 
@@ -53,6 +79,22 @@ const styles = {
   root: {
     flex: 1,
     marginTop: Platform.select({ ios: 0, android: 24 }),
+  },
+  imageHolder: {
+    flex: 1,
+    backgroundColor: '#eeeeee',
+    padding: 10,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  labelButtonHolder: {
+    flex: 1,
+  },
+  buttonHolder: {
+    padding: 10,
   },
   stateText: {
     fontSize: 16,
