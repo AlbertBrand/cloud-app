@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
+import HeartAnimation from './HeartAnimation';
 
 const uploadFunctionUri =
   'https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage';
@@ -103,18 +104,9 @@ class App extends React.Component {
         </Text>,
       ];
     }
-    return Object.keys(imageData.labels).map(key => {
-      const label = imageData.labels[key];
-      const matchesLabelStyle =
-        this.state.label === label ? styles.matchesLabel : null;
-      return (
-        <View key={key} style={[styles.label, styles.center]}>
-          <Text style={[styles.labelText, matchesLabelStyle]}>
-            {label}
-          </Text>
-        </View>
-      );
-    });
+    if (Object.values(imageData.labels).indexOf(this.state.label) > -1) {
+      return <HeartAnimation />;
+    }
   }
 
   authListener() {
