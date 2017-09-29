@@ -29,6 +29,9 @@ type State = {
   imageUri?: string,
   imageData?: {
     state: string,
+    labels: {
+      [key: string]: string,
+    },
   },
   userId?: string,
   label?: string,
@@ -100,6 +103,18 @@ class App extends React.Component {
         </Text>,
       ];
     }
+    return Object.keys(imageData.labels).map(key => {
+      const label = imageData.labels[key];
+      const matchesLabelStyle =
+        this.state.label === label ? styles.matchesLabel : null;
+      return (
+        <View key={key} style={[styles.label, styles.center]}>
+          <Text style={[styles.labelText, matchesLabelStyle]}>
+            {label}
+          </Text>
+        </View>
+      );
+    });
   }
 
   authListener() {
@@ -198,14 +213,25 @@ const styles = {
     flex: 1,
     padding: 10,
   },
+  label: {
+    flex: 1,
+  },
   buttonHolder: {
     padding: 10,
   },
   stateText: {
     fontSize: 16,
   },
+  labelText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   center: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  matchesLabel: {
+    color: 'white',
+    backgroundColor: 'green',
   },
 };
