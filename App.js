@@ -11,6 +11,8 @@ import {
 import { ImagePicker } from 'expo';
 import * as firebase from 'firebase';
 
+const uploadFunctionUri =
+  'https://us-central1-albert-brand-speeltuin.cloudfunctions.net/uploadImage';
 const config = {
   apiKey: 'AIzaSyDjXyFPFhBvHWvRBoGm2umbhUGfjEDkZ-E',
   authDomain: 'albert-brand-speeltuin.firebaseapp.com',
@@ -97,6 +99,11 @@ class App extends React.Component {
   }
 
   pickImage = async () => {
+    const { userId } = this.state;
+    if (!userId) {
+      return;
+    }
+
     const result = await ImagePicker.launchCameraAsync();
     if (result.cancelled) {
       return;
@@ -104,6 +111,27 @@ class App extends React.Component {
 
     // show image
     this.setState({ imageUri: result.uri });
+
+    // generate an image id via firebase and set status
+    const imageRef = await firebase
+      .database()
+      .ref(`user/${userId}/image/`)
+      .push({ state: 'uploading' });
+    const imageId = imageRef.key;
+
+    // upload image via post request
+    const body = new FormData();
+    (body: Object).append('image', {
+      uri: result.uri,
+      name: 'image.jpg',
+      type: 'image/jpg',
+    });
+    body.append('userId', userId);
+    body.append('imageId', imageId);
+    fetch(uploadFunctionUri, {
+      method: 'POST',
+      body,
+    });
   };
 }
 export default App;
