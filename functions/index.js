@@ -36,7 +36,7 @@ exports.detectLabels = functions.storage.object().onChange(event => {
 exports.uploadImage = functions.https.onRequest((req, res) => {
   if (req.method !== 'POST') {
     res.status(403).send('Forbidden!').end();
-    returnl;
+    return;
   }
 
   // call middleware to handle multipart requests
@@ -48,9 +48,6 @@ exports.uploadImage = functions.https.onRequest((req, res) => {
       .ref(`user/${userId}/image/${imageId}/state`)
       .once('value', snapshot => {
         if (!snapshot.val()) {
-          console.error(
-            `could not find path user/${userId}/image/${imageId}/state`,
-          );
           res.status(403).send('Forbidden!').end();
           return;
         }
